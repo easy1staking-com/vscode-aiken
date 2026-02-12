@@ -6,6 +6,8 @@ import {
   ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
+import { AikenDefinitionProvider } from "./definitionProvider";
+import { AikenHoverProvider } from "./hoverProvider";
 
 let client: LanguageClient | undefined;
 let statusBarItem: vscode.StatusBarItem;
@@ -172,6 +174,21 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   statusBarItem.command = "aiken.restartServer";
   context.subscriptions.push(statusBarItem);
+
+  const aikenSelector: vscode.DocumentFilter = {
+    scheme: "file",
+    language: "aiken",
+  };
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      aikenSelector,
+      new AikenDefinitionProvider(),
+    ),
+    vscode.languages.registerHoverProvider(
+      aikenSelector,
+      new AikenHoverProvider(),
+    ),
+  );
 
   const restartCommand = vscode.commands.registerCommand(
     "aiken.restartServer",
