@@ -10,7 +10,7 @@
     "url": "https://github.com/txpipe/vscode-aiken"
   },
   "engines": {
-    "vscode": "^1.52.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Programming Languages",
@@ -68,6 +68,27 @@
       "[uplc]": {
         "editor.formatOnSave": true
       }
+    },
+    "commands": [
+      {
+        "command": "aiken.restartServer",
+        "title": "Aiken: Restart Language Server"
+      }
+    ],
+    "configuration": {
+      "title": "Aiken",
+      "properties": {
+        "aiken.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the aiken binary. If empty, the extension will look for 'aiken' in PATH."
+        },
+        "aiken.server.formattingTimeout": {
+          "type": "number",
+          "default": 5000,
+          "description": "Timeout in milliseconds for format-on-save requests. Set to 0 to disable."
+        }
+      }
     }
   },
   "activationEvents": [
@@ -84,23 +105,22 @@
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {
-    "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.0",
-    "@types/node": "16.x",
-    "@types/vscode": "^1.52.0",
-    "@typescript-eslint/eslint-plugin": "^5.42.0",
-    "@typescript-eslint/parser": "^5.42.0",
-    "@vscode/test-electron": "^2.2.0",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.82.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/test-electron": "^2.4.0",
+    "@vscode/vsce": "^3.0.0",
     "eslint": "^8.26.0",
     "glob": "^8.0.3",
     "mocha": "^10.1.0",
-    "ts-loader": "^9.4.1",
-    "typescript": "^4.8.4",
-    "vsce": "^2.14.0",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.7.0",
     "webpack": "^5.75.0",
-    "webpack-cli": "^4.10.0"
+    "webpack-cli": "^5.1.0"
   },
   "dependencies": {
-    "vscode-languageclient": "^8.0.2"
+    "vscode-languageclient": "^9.0.1"
   }
 }
