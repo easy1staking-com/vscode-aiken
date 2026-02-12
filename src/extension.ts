@@ -98,9 +98,15 @@ async function startClient(context: vscode.ExtensionContext) {
           return next(document, options, token);
         }
 
-        const formatPromise = next(document, options, token);
-        const timeoutPromise = new Promise<vscode.TextEdit[]>((resolve) => {
-          setTimeout(() => {
+        let timer: ReturnType<typeof setTimeout>;
+        const formatPromise = Promise.resolve(
+          next(document, options, token),
+        ).then((edits) => {
+          clearTimeout(timer);
+          return edits;
+        });
+        const timeoutPromise = new Promise<vscode.TextEdit[] | null | undefined>((resolve) => {
+          timer = setTimeout(() => {
             outputChannel.appendLine(
               `[warn] Formatting timed out after ${formattingTimeout}ms for ${document.fileName}`,
             );
