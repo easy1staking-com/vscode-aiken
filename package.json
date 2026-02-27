@@ -61,6 +61,12 @@
         "path": "./syntaxes/uplc.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "aiken",
+        "path": "./snippets/aiken.json"
+      }
+    ],
     "configurationDefaults": {
       "[aiken]": {
         "editor.formatOnSave": true
@@ -73,6 +79,32 @@
       {
         "command": "aiken.restartServer",
         "title": "Aiken: Restart Language Server"
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "aiken",
+        "required": ["command"],
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The aiken command to run (build, check, test, bench)"
+          }
+        }
+      }
+    ],
+    "problemMatchers": [
+      {
+        "name": "aiken",
+        "owner": "aiken",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^\\s*\\u250c\\u2500 (.+):(\\d+):(\\d+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 0
+        }
       }
     ],
     "configuration": {

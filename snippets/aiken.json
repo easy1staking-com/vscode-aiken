@@ -1,0 +1,82 @@
+{
+  "Function": {
+    "prefix": "fn",
+    "body": ["fn ${1:name}(${2:params}) -> ${3:ReturnType} {", "  ${0}", "}"],
+    "description": "Private function"
+  },
+  "Public Function": {
+    "prefix": "pub fn",
+    "body": ["pub fn ${1:name}(${2:params}) -> ${3:ReturnType} {", "  ${0}", "}"],
+    "description": "Public function"
+  },
+  "Type": {
+    "prefix": "type",
+    "body": ["type ${1:Name} {", "  ${0}", "}"],
+    "description": "Private type"
+  },
+  "Public Type": {
+    "prefix": "pub type",
+    "body": ["pub type ${1:Name} {", "  ${0}", "}"],
+    "description": "Public type"
+  },
+  "Opaque Type": {
+    "prefix": "opaque type",
+    "body": ["opaque type ${1:Name} {", "  ${0}", "}"],
+    "description": "Private opaque type"
+  },
+  "Public Opaque Type": {
+    "prefix": "pub opaque type",
+    "body": ["pub opaque type ${1:Name} {", "  ${0}", "}"],
+    "description": "Public opaque type"
+  },
+  "Validator": {
+    "prefix": "validator",
+    "body": ["validator ${1:name} {", "  ${2:spend}(${3:datum}, ${4:redeemer}, ${5:ctx}) {", "    ${0}", "  }", "}"],
+    "description": "Validator"
+  },
+  "Test": {
+    "prefix": "test",
+    "body": ["test ${1:name}() {", "  ${0}", "}"],
+    "description": "Test"
+  },
+  "Bench": {
+    "prefix": "bench",
+    "body": ["bench ${1:name}() {", "  ${0}", "}"],
+    "description": "Benchmark"
+  },
+  "When": {
+    "prefix": "when",
+    "body": ["when ${1:value} is {", "  ${2:Pattern} -> ${0}", "}"],
+    "description": "When pattern match"
+  },
+  "If": {
+    "prefix": "if",
+    "body": ["if ${1:condition} {", "  ${2}", "} else {", "  ${0}", "}"],
+    "description": "If-else expression"
+  },
+  "Let": {
+    "prefix": "let",
+    "body": ["let ${1:name} = ${0}"],
+    "description": "Let binding"
+  },
+  "Expect": {
+    "prefix": "expect",
+    "body": ["expect ${1:Pattern} = ${0}"],
+    "description": "Expect pattern match binding"
+  },
+  "Use": {
+    "prefix": "use",
+    "body": ["use ${1:module/path}"],
+    "description": "Import module"
+  },
+  "Const": {
+    "prefix": "const",
+    "body": ["const ${1:name} = ${0}"],
+    "description": "Constant"
+  },
+  "Trace": {
+    "prefix": "trace",
+    "body": ["trace @\"${1:message}\""],
+    "description": "Trace debug message"
+  }
+}

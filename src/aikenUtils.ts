@@ -217,6 +217,238 @@ function extractDefinitionBlock(lines: string[], startIndex: number): string {
   }
 }
 
-function escapeRegex(str: string): string {
+export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// --- Shared types and utilities for symbol providers ---
+
+export interface DefinitionInfo {
+  name: string;
+  kind: string; // "type" | "fn" | "validator" | "test" | "bench" | "const" | "let" | "expect" | "constructor"
+  visibility: "pub" | "priv";
+  lineIndex: number;
+  charIndex: number;
+  parentLineIndex?: number;
+}
+
+/**
+ * Scan all lines for every definition. Tracks brace depth to nest
+ * type constructors under parent types.
+ */
+export function findAllDefinitions(lines: string[]): DefinitionInfo[] {
+  const defs: DefinitionInfo[] = [];
+  let braceDepth = 0;
+  let currentTypeLineIndex: number | undefined;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("//")) {
+      continue;
+    }
+
+    // Check for top-level definitions
+    const defMatch = trimmed.match(
+      /^(pub\s+)?(opaque\s+)?(type|fn|validator|test|bench|const)\s+(\w+)/,
+    );
+    if (defMatch && braceDepth === 0) {
+      const isPub = !!defMatch[1];
+      let kind = defMatch[3];
+      if (defMatch[2] && kind === "type") {
+        kind = "type"; // opaque type is still "type"
+      }
+      const name = defMatch[4];
+      const charIndex = line.indexOf(name);
+      defs.push({
+        name,
+        kind,
+        visibility: isPub ? "pub" : "priv",
+        lineIndex: i,
+        charIndex: charIndex >= 0 ? charIndex : 0,
+      });
+      if (kind === "type") {
+        currentTypeLineIndex = i;
+      }
+    }
+
+    // Check for let/expect bindings at top-level
+    if (braceDepth === 0) {
+      const bindingMatch = trimmed.match(/^(pub\s+)?(let|expect)\s+(\w+)/);
+      if (bindingMatch) {
+        const isPub = !!bindingMatch[1];
+        const kind = bindingMatch[2];
+        const name = bindingMatch[3];
+        const charIndex = line.indexOf(name);
+        defs.push({
+          name,
+          kind,
+          visibility: isPub ? "pub" : "priv",
+          lineIndex: i,
+          charIndex: charIndex >= 0 ? charIndex : 0,
+        });
+      }
+    }
+
+    // Track braces
+    for (const ch of line) {
+      if (ch === "{") braceDepth++;
+      if (ch === "}") braceDepth--;
+    }
+    if (braceDepth < 0) braceDepth = 0;
+
+    // Check for type constructors inside a type body
+    if (currentTypeLineIndex !== undefined && braceDepth > 0) {
+      const ctorMatch = trimmed.match(/^([A-Z]\w*)\b/);
+      if (ctorMatch && !trimmed.startsWith("//")) {
+        const name = ctorMatch[1];
+        const charIndex = line.indexOf(name);
+        defs.push({
+          name,
+          kind: "constructor",
+          visibility: "priv",
+          lineIndex: i,
+          charIndex: charIndex >= 0 ? charIndex : 0,
+          parentLineIndex: currentTypeLineIndex,
+        });
+      }
+    }
+
+    // Reset current type when we leave the type block
+    if (braceDepth === 0 && currentTypeLineIndex !== undefined) {
+      currentTypeLineIndex = undefined;
+    }
+  }
+
+  return defs;
+}
+
+/**
+ * Map a definition kind to a vscode.SymbolKind.
+ */
+export function definitionKindToSymbolKind(kind: string): vscode.SymbolKind {
+  switch (kind) {
+    case "type":
+      return vscode.SymbolKind.Enum;
+    case "constructor":
+      return vscode.SymbolKind.EnumMember;
+    case "fn":
+      return vscode.SymbolKind.Function;
+    case "validator":
+      return vscode.SymbolKind.Interface;
+    case "test":
+    case "bench":
+      return vscode.SymbolKind.Method;
+    case "const":
+      return vscode.SymbolKind.Constant;
+    case "let":
+    case "expect":
+      return vscode.SymbolKind.Variable;
+    default:
+      return vscode.SymbolKind.Variable;
+  }
+}
+
+/**
+ * Convert an absolute file path to an Aiken module path.
+ * e.g. `lib/aiken/crypto.ak` → `aiken/crypto`
+ */
+export function filePathToModulePath(
+  filePath: string,
+  searchRoot: string,
+): string | undefined {
+  const relative = path.relative(searchRoot, filePath).replace(/\\/g, "/");
+  const prefixes = ["lib/", "validators/"];
+  for (const prefix of prefixes) {
+    if (relative.startsWith(prefix)) {
+      return relative.slice(prefix.length).replace(/\.ak$/, "");
+    }
+  }
+  // build/packages/*/lib/...
+  const buildMatch = relative.match(/^build\/packages\/[^/]+\/lib\/(.+)\.ak$/);
+  if (buildMatch) {
+    return buildMatch[1];
+  }
+  return relative.replace(/\.ak$/, "");
+}
+
+export interface ExportedSymbol {
+  name: string;
+  kind: string;
+  modulePath: string;
+  filePath: string;
+}
+
+/**
+ * Recursively walk a directory for `.ak` files, calling `callback` for each.
+ */
+export function walkAkFiles(
+  dir: string,
+  callback: (filePath: string) => void,
+): void {
+  if (!fs.existsSync(dir)) return;
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkAkFiles(fullPath, callback);
+    } else if (entry.isFile() && entry.name.endsWith(".ak")) {
+      callback(fullPath);
+    }
+  }
+}
+
+/**
+ * Scan lib/, validators/, and build packages for all pub definitions.
+ */
+export function findExportedSymbols(projectRoot: string): ExportedSymbol[] {
+  const symbols: ExportedSymbol[] = [];
+  const searchDirs = [
+    path.join(projectRoot, "lib"),
+    path.join(projectRoot, "validators"),
+  ];
+
+  // Also scan build/packages/*/lib/
+  const buildDir = path.join(projectRoot, "build", "packages");
+  if (fs.existsSync(buildDir)) {
+    try {
+      const packages = fs.readdirSync(buildDir);
+      for (const pkg of packages) {
+        searchDirs.push(path.join(buildDir, pkg, "lib"));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  for (const dir of searchDirs) {
+    walkAkFiles(dir, (filePath) => {
+      try {
+        const content = fs.readFileSync(filePath, "utf8");
+        const lines = content.split("\n");
+        const defs = findAllDefinitions(lines);
+        const modPath = filePathToModulePath(filePath, projectRoot);
+        for (const def of defs) {
+          if (def.visibility === "pub" && def.kind !== "constructor") {
+            symbols.push({
+              name: def.name,
+              kind: def.kind,
+              modulePath: modPath || "",
+              filePath,
+            });
+          }
+        }
+      } catch {
+        // skip unreadable files
+      }
+    });
+  }
+
+  return symbols;
 }
